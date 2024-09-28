@@ -32,6 +32,8 @@ def test_logging(logger: tb.SummaryWriter):
             # TODO: log train_loss
             # TODO: save additional metrics to be averaged
 
+            # TESTING
+
             global_step += 1
 
         # TODO: log average train_accuracy
