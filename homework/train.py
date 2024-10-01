@@ -17,6 +17,9 @@ def train(
     lr: float = 1e-3,
     batch_size: int = 128,
     seed: int = 2024,
+    momentum: float = 0.9,
+    num_layers: int = 4,
+    hidden_size: int = 128,
     **kwargs,
 ):
     if torch.cuda.is_available():
@@ -45,7 +48,7 @@ def train(
 
     # create loss function and optimizer
     loss_func = ClassificationLoss()
-    # optimizer = ...
+    optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=momentum)
 
     global_step = 0
     metrics = {"train_acc": [], "val_acc": []}
@@ -62,7 +65,15 @@ def train(
             img, label = img.to(device), label.to(device)
 
             # TODO: implement training step
-            raise NotImplementedError("Training step not implemented")
+            pred = model(img)
+            loss_val = loss_func(pred, label)
+            optimizer.zero_grad()
+            loss_val.backward()
+            optimizer.step()
+
+            logger.add_scalar("train_loss", loss_val, global_step)
+
+            # raise NotImplementedError("Training step not implemented")
 
             global_step += 1
 
@@ -74,13 +85,20 @@ def train(
                 img, label = img.to(device), label.to(device)
 
                 # TODO: compute validation accuracy
-                raise NotImplementedError("Validation accuracy not implemented")
+                pred = model(img)
+                acc = (pred.argmax(dim=1) == label).float().mean()
+                metrics["val_acc"].append(acc)
+
+                # raise NotImplementedError("Validation accuracy not implemented")
 
         # log average train and val accuracy to tensorboard
         epoch_train_acc = torch.as_tensor(metrics["train_acc"]).mean()
         epoch_val_acc = torch.as_tensor(metrics["val_acc"]).mean()
+        logger.add_scalar("train_accuracy", epoch_train_acc, global_step)
+        logger.add_scalar("val_accuracy", epoch_val_acc, global_step)
 
-        raise NotImplementedError("Logging not implemented")
+
+        # raise NotImplementedError("Logging not implemented")
 
         # print on first, last, every 10th epoch
         if epoch == 0 or epoch == num_epoch - 1 or (epoch + 1) % 10 == 0:
@@ -108,7 +126,8 @@ if __name__ == "__main__":
     parser.add_argument("--seed", type=int, default=2024)
 
     # optional: additional model hyperparamters
-    # parser.add_argument("--num_layers", type=int, default=3)
-
+    parser.add_argument("--num_layers", type=int, default=3)
+    parser.add_argument("--hidden_size", type=int, default=128)
+    parser.add_argument("--momentum", type=float, default=0.9)
     # pass all arguments to train
     train(**vars(parser.parse_args()))
